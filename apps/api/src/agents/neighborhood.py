@@ -129,6 +129,13 @@ async def _assess_candidate(
 
     # Force listing_id to the candidate we are assessing
     args["listing_id"] = candidate.id
+    # LLMs occasionally emit 0; clamp into the schema's 1–5 range.
+    for score_key in ("safety_score", "noise_score"):
+        if score_key in args and args[score_key] is not None:
+            try:
+                args[score_key] = max(1, min(5, int(args[score_key])))
+            except (TypeError, ValueError):
+                args[score_key] = 3
     try:
         assessment = NeighborhoodAssessment.model_validate(args)
     except Exception as exc:

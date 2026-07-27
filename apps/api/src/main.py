@@ -1,13 +1,22 @@
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
-from src.config import settings
+from src.api.rate_limit import limiter
+from src.api.routes.observability import router as observability_router
+from src.api.routes.requests import router as requests_router
+from src.config import configure_langsmith_env, settings
 from src.models import Base  # noqa: F401 — ensures all models are registered
 
 logger = structlog.get_logger(__name__)
@@ -35,16 +44,84 @@ def configure_structlog() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_structlog()
+    configure_langsmith_env()
     logger.info(
         "startup",
         environment=settings.environment,
         models_registered=list(Base.metadata.tables.keys()),
+        langsmith_enabled=bool(
+            settings.langchain_api_key or settings.langsmith_api_key
+        ),
     )
     yield
     logger.info("shutdown")
 
 
-app = FastAPI(title="Housing Decision API", lifespan=lifespan)
+app = FastAPI(
+    title="Housing Decision API",
+    lifespan=lifespan,
+    swagger_ui_init_oauth={},
+)
+app.state.limiter = limiter
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,  # type: ignore[arg-type]
+)
+# Browser clients (Next.js) need CORS before auth'd fetch works.
+# Always include localhost; add production origins via CORS_ORIGINS (comma-separated).
+_cors_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_cors_origins.extend(
+    [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(SlowAPIMiddleware)
+app.include_router(requests_router)
+app.include_router(observability_router)
+
+
+def custom_openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+        description=app.description,
+    )
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})[
+        "HTTPBearer"
+    ] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Clerk JWT (Authorization: Bearer <token>)",
+    }
+    # Mark authenticated API routes as requiring Bearer auth in Swagger UI.
+    for path, methods in schema.get("paths", {}).items():
+        path_str = str(path)
+        if not (
+            path_str.startswith("/api/requests")
+            or path_str.startswith("/api/admin")
+        ):
+            continue
+        for method_schema in methods.values():
+            if isinstance(method_schema, dict):
+                method_schema.setdefault("security", [{"HTTPBearer": []}])
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi  # type: ignore[method-assign]
 
 
 def _sync_check_database(url: str) -> None:

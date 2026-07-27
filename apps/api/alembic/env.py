@@ -11,6 +11,7 @@ from alembic import context
 
 # Project imports — must come after sys.path is set up by alembic runner
 from src.config import settings
+from src.db.url import make_asyncpg_url
 from src.models import Base  # noqa: F401 — imports all models for autogenerate
 
 # ---------------------------------------------------------------------------
@@ -20,11 +21,7 @@ config = context.config
 
 # Override the sqlalchemy.url with the value from our settings
 # Convert plain postgresql:// → postgresql+asyncpg://
-_db_url = settings.database_url
-if _db_url.startswith("postgresql://"):
-    _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif _db_url.startswith("postgres://"):
-    _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+_db_url, _connect_args = make_asyncpg_url(settings.database_url)
 config.set_main_option("sqlalchemy.url", _db_url)
 
 if config.config_file_name is not None:
@@ -62,6 +59,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

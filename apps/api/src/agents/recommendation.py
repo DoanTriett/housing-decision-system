@@ -22,11 +22,18 @@ from src.schemas.agents import (
 
 logger = structlog.get_logger(__name__)
 
+_HARD_CONSTRAINT_SCORE_CAP = 0.5
+
 _SUBMIT_RECOMMENDATION_TOOL: dict[str, Any] = {
     "type": "function",
     "function": {
         "name": "submit_recommendation",
-        "description": "Submit the ranked top listings and trade-off narrative.",
+        "description": (
+            "Submit the ranked top listings and trade-off narrative. "
+            "If violates_hard_constraints is non-empty for a candidate, "
+            "score must be <= 0.5 and rationale must name the violation "
+            "(use the word 'exceeds' for commute/budget violations)."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
@@ -60,9 +67,52 @@ _TOOL_CHOICE: dict[str, Any] = {
 }
 
 
+def compute_hard_constraint_violations(
+    state: AgentState, candidate: ListingCandidate
+) -> list[str]:
+    """Code-level hard-constraint checks — not LLM judgment."""
+    req = state["user_request"]
+    lid = candidate.id
+    violations: list[str] = []
+
+    commute = state["commute_results"].get(lid)
+    if commute is not None and not commute.meets_constraint:
+        limit = req.max_commute_minutes
+        if limit is not None:
+            over_by = max(0.0, float(commute.walk_minutes) - float(limit))
+            violations.append(
+                f"exceeds your {limit}-minute commute limit by "
+                f"{over_by:.0f} minutes "
+                f"(Commute agent: walk_minutes={commute.walk_minutes:.1f})"
+            )
+        else:
+            violations.append(
+                f"exceeds commute constraint "
+                f"(Commute agent: walk_minutes={commute.walk_minutes:.1f}, "
+                f"meets_constraint=False)"
+            )
+
+    budget = state["budget_analysis"].get(lid)
+    if budget is not None and not budget.is_affordable:
+        violations.append(
+            f"exceeds your ${req.budget_max:.0f} budget "
+            f"(Budget agent: monthly_cost=${budget.monthly_cost:.0f}, "
+            f"pct_of_budget={budget.pct_of_budget:.0f}%)"
+        )
+
+    # Defensive: Listing Search should already filter these, but double-check.
+    if req.requires_laundry and not candidate.has_laundry:
+        violations.append("requires laundry but listing has no laundry")
+    if req.requires_pet_friendly and not candidate.is_pet_friendly:
+        violations.append("requires pet-friendly but listing is not pet-friendly")
+
+    return violations
+
+
 def _candidate_summary(state: AgentState, candidate: ListingCandidate) -> str:
     """Build a per-candidate summary using only findings from agents that ran."""
     lid = candidate.id
+    violations = compute_hard_constraint_violations(state, candidate)
     lines = [
         f"listing_id: {lid}  (use this exact listing_id string in your output)",
         f"title: {candidate.title}",
@@ -71,6 +121,7 @@ def _candidate_summary(state: AgentState, candidate: ListingCandidate) -> str:
         f"beds: {candidate.beds}",
         f"has_laundry: {candidate.has_laundry}",
         f"is_pet_friendly: {candidate.is_pet_friendly}",
+        f"violates_hard_constraints: {violations}",
     ]
 
     nb = state["neighborhood_findings"].get(lid)
@@ -137,18 +188,51 @@ def _build_user_message(state: AgentState) -> str:
     return "\n".join(parts)
 
 
+def _violations_by_listing_id(state: AgentState) -> dict[str, list[str]]:
+    return {
+        c.id: compute_hard_constraint_violations(state, c)
+        for c in state["candidates"]
+    }
+
+
+def _clamp_score_for_violations(
+    listing_id: str,
+    score: float,
+    violations_map: dict[str, list[str]],
+) -> float:
+    """Python-level enforcement: hard-constraint violators cannot score above 0.5."""
+    clamped = min(1.0, max(0.0, float(score)))
+    if violations_map.get(listing_id):
+        return min(clamped, _HARD_CONSTRAINT_SCORE_CAP)
+    return clamped
+
+
 def _fallback_recommendation(state: AgentState) -> RecommendationOutput:
     """Deterministic fallback when the LLM returns unusable output."""
-    sorted_candidates = sorted(state["candidates"], key=lambda c: c.price_monthly)
+    violations_map = _violations_by_listing_id(state)
+    # Prefer non-violating candidates, then ascending price.
+    sorted_candidates = sorted(
+        state["candidates"],
+        key=lambda c: (1 if violations_map.get(c.id) else 0, c.price_monthly),
+    )
     top = sorted_candidates[:3]
     ranked = [
         RankedListing(
             listing_id=c.id,
             rank=i,
-            score=max(0.0, 1.0 - (i - 1) * 0.15),
+            score=_clamp_score_for_violations(
+                c.id, max(0.0, 1.0 - (i - 1) * 0.15), violations_map
+            ),
             rationale=(
-                f"Listing Search agent returned this candidate at "
-                f"${c.price_monthly:.0f}/mo in {c.neighborhood}."
+                (
+                    f"Note: this {violations_map[c.id][0]}. "
+                    if violations_map.get(c.id)
+                    else ""
+                )
+                + (
+                    f"Listing Search agent returned this candidate at "
+                    f"${c.price_monthly:.0f}/mo in {c.neighborhood}."
+                )
             ),
         )
         for i, c in enumerate(top, start=1)
@@ -214,6 +298,7 @@ async def run_recommendation(state: AgentState) -> AgentState:
         )
 
     raw_args = getattr(tool_call.function, "arguments", "{}")
+    violations_map = _violations_by_listing_id(state)
     recommendation: RecommendationOutput | None = None
     try:
         args = json.loads(raw_args)
@@ -297,7 +382,7 @@ async def run_recommendation(state: AgentState) -> AgentState:
                 continue
             if any(c.listing_id == resolved for c in cleaned):
                 continue
-            score = min(1.0, max(0.0, float(item.score)))
+            score = _clamp_score_for_violations(resolved, item.score, violations_map)
             rationale = item.rationale.strip()
             if not rationale:
                 continue
@@ -314,11 +399,14 @@ async def run_recommendation(state: AgentState) -> AgentState:
 
         if not cleaned and len(candidate_list) == 1 and recommendation.ranked_listings:
             top = recommendation.ranked_listings[0]
+            only_id = candidate_list[0].id
             cleaned = [
                 RankedListing(
-                    listing_id=candidate_list[0].id,
+                    listing_id=only_id,
                     rank=1,
-                    score=min(1.0, max(0.0, float(top.score))),
+                    score=_clamp_score_for_violations(
+                        only_id, float(top.score), violations_map
+                    ),
                     rationale=top.rationale
                     or (
                         f"Listing Search agent returned this candidate at "

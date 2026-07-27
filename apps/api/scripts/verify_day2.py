@@ -76,7 +76,10 @@ def chk_listings_count() -> None:
 # Check 4: Qdrant 'neighborhoods' collection exists with >= 15 vectors
 # ---------------------------------------------------------------------------
 def chk_qdrant_collection() -> None:
-    client = QdrantClient(url=settings.qdrant_url)
+    client = QdrantClient(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key or None,
+    )
     collections = {c.name for c in client.get_collections().collections}
     if COLLECTION_NAME not in collections:
         raise AssertionError(f"Collection '{COLLECTION_NAME}' not found in Qdrant")
@@ -93,7 +96,10 @@ def chk_semantic_query() -> None:
     if not settings.voyage_api_key:
         raise AssertionError("VOYAGE_API_KEY not set")
     vo = voyageai.Client(api_key=settings.voyage_api_key)
-    client = QdrantClient(url=settings.qdrant_url)
+    client = QdrantClient(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key or None,
+    )
 
     q_result = vo.embed(
         ["safe quiet neighborhood near university"],

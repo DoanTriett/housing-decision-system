@@ -3,21 +3,14 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.config import settings
+from src.db.url import make_asyncpg_url
 
-
-def _make_async_url(url: str) -> str:
-    """Convert a plain postgresql:// URL to postgresql+asyncpg:// for SQLAlchemy."""
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+asyncpg://", 1)
-    return url
-
-
+_database_url, _connect_args = make_asyncpg_url(settings.database_url)
 engine = create_async_engine(
-    _make_async_url(settings.database_url),
+    _database_url,
     echo=False,
     pool_pre_ping=True,
+    connect_args=_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(

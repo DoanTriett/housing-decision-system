@@ -235,3 +235,131 @@ async def test_recommendation_empty_candidates_returns_empty_list() -> None:
     assert rec is not None
     assert rec.ranked_listings == []
     assert result["trace"][0].agent_name == "recommendation"
+
+
+@pytest.mark.asyncio
+async def test_hard_constraint_violation_caps_score_at_half() -> None:
+    """Code-level clamp: LLM score > 0.5 is capped when commute fails."""
+    candidates = [_candidate("far", 900), _candidate("near", 1000)]
+    state = _make_state(candidates)
+    # Override commute: "far" violates the 20-minute constraint.
+    state["commute_results"]["far"] = CommuteResult(
+        listing_id="far",
+        walk_minutes=82.0,
+        meets_constraint=False,
+    )
+
+    payload = {
+        "ranked_listings": [
+            {
+                "listing_id": "far",
+                "rank": 1,
+                "score": 0.95,
+                "rationale": (
+                    "Note: this exceeds your 20-minute commute limit by 62 minutes. "
+                    "Neighborhood agent still rated safety 4/5."
+                ),
+            },
+            {
+                "listing_id": "near",
+                "rank": 2,
+                "score": 0.88,
+                "rationale": "Commute agent confirmed a 15-min walk within the limit.",
+            },
+        ],
+        "trade_off_narrative": (
+            "Near is preferred despite a slightly higher price because Far "
+            "exceeds the commute constraint."
+        ),
+    }
+
+    with patch(
+        "src.agents.recommendation.complete",
+        new=AsyncMock(return_value=_mock_llm_response(payload)),
+    ):
+        result = await run_recommendation(state)
+
+    rec = result["recommendation"]
+    assert rec is not None
+    by_id = {r.listing_id: r for r in rec.ranked_listings}
+    assert by_id["far"].score <= 0.5
+    assert "exceeds" in by_id["far"].rationale.lower()
+    assert by_id["near"].score == 0.88
+
+
+@pytest.mark.asyncio
+async def test_laundry_and_pet_hard_constraints_clamp_score() -> None:
+    """Defense-in-depth: laundry/pet flags clamp even if listing_search missed them."""
+    bad = ListingCandidate(
+        id="no-amenities",
+        title="Bare studio",
+        address="1 Main",
+        neighborhood="Hyde Park",
+        price_monthly=900,
+        beds=1.0,
+        has_laundry=False,
+        is_pet_friendly=False,
+        lat=30.3,
+        lon=-97.7,
+    )
+    state = _make_state([bad])
+    state["user_request"] = UserHousingRequest(
+        budget_max=1200,
+        anchor_address="Austin, TX",
+        max_commute_minutes=20,
+        requires_laundry=True,
+        requires_pet_friendly=True,
+        free_text="need laundry and pets",
+    )
+    payload = {
+        "ranked_listings": [
+            {
+                "listing_id": "no-amenities",
+                "rank": 1,
+                "score": 0.99,
+                "rationale": "Looks fine.",
+            }
+        ],
+        "trade_off_narrative": "Only candidate.",
+    }
+    with patch(
+        "src.agents.recommendation.complete",
+        new=AsyncMock(return_value=_mock_llm_response(payload)),
+    ):
+        result = await run_recommendation(state)
+    rec = result["recommendation"]
+    assert rec is not None
+    assert rec.ranked_listings[0].score <= 0.5
+
+
+@pytest.mark.asyncio
+async def test_hard_constraint_clamp_even_when_llm_omits_violation_language() -> None:
+    """Clamp still applies if the LLM returns a high score without violation text."""
+    state = _make_state([_candidate("over", 950)])
+    state["commute_results"]["over"] = CommuteResult(
+        listing_id="over",
+        walk_minutes=45.0,
+        meets_constraint=False,
+    )
+    payload = {
+        "ranked_listings": [
+            {
+                "listing_id": "over",
+                "rank": 1,
+                "score": 0.91,
+                "rationale": "Neighborhood agent rated safety 4/5.",
+            }
+        ],
+        "trade_off_narrative": "Only one candidate available.",
+    }
+
+    with patch(
+        "src.agents.recommendation.complete",
+        new=AsyncMock(return_value=_mock_llm_response(payload)),
+    ):
+        result = await run_recommendation(state)
+
+    rec = result["recommendation"]
+    assert rec is not None
+    assert len(rec.ranked_listings) == 1
+    assert rec.ranked_listings[0].score <= 0.5

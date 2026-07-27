@@ -19,3 +19,5 @@ class Recommendation(UUIDMixin, TimestampMixin, Base):
     )
     ranked_listings: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
     trade_off_narrative: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Day 12: anchor coords + any extra map/context fields (nullable for older rows).
+    result_context: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)

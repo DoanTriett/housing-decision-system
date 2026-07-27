@@ -69,7 +69,10 @@ async def main() -> None:
 
     state = _make_state()
     redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-    qdrant = QdrantClient(url=settings.qdrant_url)
+    qdrant = QdrantClient(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key or None,
+    )
     vector_provider = QdrantVectorSearchProvider(
         client=qdrant, collection=settings.qdrant_collection
     )

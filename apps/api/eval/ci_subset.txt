@@ -1,0 +1,10 @@
+# CI eval subset (8 examples) — keep small for cost/time on every PR.
+# Full dataset: golden_dataset.jsonl (40 examples) for local/manual runs.
+eval_001
+eval_002
+eval_003
+eval_005
+eval_007
+eval_008
+eval_016
+eval_023

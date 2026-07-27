@@ -1,12 +1,13 @@
 [project]
 name = "api"
 version = "0.1.0"
-description = "Multi-Agent Housing Decision System — API service"
+description = "Multi-Agent Housing Decision System - API service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.18.5",
     "asyncpg>=0.31.0",
+    "celery[redis]>=5.3.1",
     "faker>=40.35.0",
     "fastapi>=0.139.2",
     "geopy>=2.5.0",
@@ -16,9 +17,12 @@ dependencies = [
     "litellm<1.70",
     "psycopg[binary,pool]>=3.3.4",
     "pydantic-settings>=2.14.2",
+    "python-jose[cryptography]>=3.5.0",
     "qdrant-client>=1.18.0",
     "redis>=8.0.1",
+    "slowapi>=0.1.10",
     "sqlalchemy[asyncio]>=2.0.51",
+    "sse-starlette>=3.4.6",
     "structlog>=26.1.0",
     "uvicorn[standard]>=0.51.0",
     "voyageai>=0.5.0",
@@ -30,6 +34,7 @@ dev = [
     "mypy>=2.3.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-cov>=6.0.0",
     "ruff>=0.15.22",
     "types-redis>=4.6.0.20241004",
 ]
@@ -45,6 +50,8 @@ ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
+"eval/*" = ["ANN", "E402"]
+"scripts/*" = ["ANN", "T201"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -61,3 +68,12 @@ markers = [
 
 [tool.coverage.run]
 source = ["src"]
+branch = true
+omit = ["src/worker/celery_app.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+# Judgment: report coverage in CI; fail soft at 55% so trivial gaps don't block
+# while still catching large regressions. Raise as coverage grows.
+fail_under = 55

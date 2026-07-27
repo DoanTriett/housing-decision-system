@@ -30,6 +30,10 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Eval run artifacts (keep directory via .gitkeep)
+apps/api/eval/results/*.json
+apps/api/eval/results/*_ci_subset.txt
+
 # IDEs
 .idea/
 .vscode/
@@ -44,6 +48,3 @@ qdrant_data/
 
 # Logs
 *.log
-
-# Docs
-docs/

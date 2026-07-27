@@ -513,7 +513,7 @@ housing-decision-system/
 - **Goal:** A live, public, professionally documented project.
 - **Features:** production deployment across all services, end-to-end LangSmith tracing, polished README with architecture diagrams and demo video, final UX polish.
 - **Step-by-step:**
-  1. Deploy backend (Fly.io/Railway, Dockerized), frontend (Vercel), DB (Neon), Redis (Upstash), Qdrant (Qdrant Cloud).
+  1. Deploy backend (Railway, Dockerized), frontend (Vercel), DB (Neon), Redis (Upstash), Qdrant (Qdrant Cloud).
   2. Wire LangSmith tracing in production; confirm traces show up per run with full per-agent breakdowns.
   3. Write the README: problem statement, architecture diagram (reuse the mermaid diagrams from this doc), tech stack table, eval results, setup instructions, "design decisions & trade-offs" section, link to demo video.
   4. Record a 2–3 minute demo video: submit two contrasting requests, show the live agent graph differ, show the trade-off explanation, show the eval report and observability dashboard.

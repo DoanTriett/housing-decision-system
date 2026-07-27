@@ -45,6 +45,10 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       QDRANT_URL: http://localhost:6333
       ENVIRONMENT: ci
+      CLERK_JWKS_URL: local
+      CLERK_ISSUER: http://localhost/clerk
+      DEV_JWT_SECRET: ci-test-secret
+      RATE_LIMIT_PER_USER_PER_HOUR: 20
 
     steps:
       - name: Checkout
@@ -71,5 +75,96 @@ jobs:
       - name: Type-check (mypy)
         run: uv run mypy src
 
-      - name: Test (pytest)
-        run: uv run pytest -v
+      - name: Test with coverage
+        run: >
+          uv run pytest -v
+          --cov=src
+          --cov-report=term-missing
+          --cov-fail-under=55
+
+  # Day 13 eval gate — small fixed subset only (not the full 40-example dataset).
+  # Requires repository secret OPENAI_API_KEY (Settings → Secrets → Actions).
+  # Optional: GOOGLE_MAPS_API_KEY / VOYAGE_API_KEY if commute/neighborhood are exercised.
+  eval-subset:
+    name: Eval subset gate
+    runs-on: ubuntu-latest
+    # Skip gracefully on forks without secrets; still run when secret is present.
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: housing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d housing"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      qdrant:
+        image: qdrant/qdrant:v1.13.2
+        ports:
+          - 6333:6333
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/housing
+      REDIS_URL: redis://localhost:6379/0
+      QDRANT_URL: http://localhost:6333
+      ENVIRONMENT: ci
+      # IMPORTANT: set OPENAI_API_KEY in GitHub Actions repository secrets.
+      # Never commit API keys. Without this secret the job will fail closed on PRs
+      # once the secret is configured; for local dry-runs use:
+      #   uv run python eval/run_eval.py --ci
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require OpenAI secret
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        run: |
+          echo "::error::OPENAI_API_KEY secret is not configured. Add it under repo Settings → Secrets → Actions."
+          exit 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Apply migrations + seed listings
+        run: |
+          uv run alembic upgrade head
+          if [ -f scripts/seed_db.py ]; then uv run python scripts/seed_db.py; fi
+          if [ -f scripts/seed_vector_db.py ]; then uv run python scripts/seed_vector_db.py; fi
+
+      - name: Run CI eval subset
+        run: uv run python eval/run_eval.py --ci

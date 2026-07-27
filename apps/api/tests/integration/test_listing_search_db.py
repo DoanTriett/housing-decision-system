@@ -13,20 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from src.agents.listing_search import run_listing_search
 from src.agents.state import AgentState
 from src.config import settings
+from src.db.url import make_asyncpg_url
 from src.llm.exceptions import ListingSearchError
 from src.schemas.agents import UserHousingRequest
 from src.tools.listings_repo import DBListingsProvider
 
 
-def _async_url(url: str) -> str:
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    return url
-
-
 @pytest_asyncio.fixture
 async def session() -> AsyncSession:
-    engine = create_async_engine(_async_url(settings.database_url), echo=False)
+    database_url, connect_args = make_asyncpg_url(settings.database_url)
+    engine = create_async_engine(database_url, echo=False, connect_args=connect_args)
     factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as sess:
         yield sess

@@ -271,7 +271,10 @@ def main() -> None:
     vo = voyageai.Client(api_key=settings.voyage_api_key)
 
     # ---- Qdrant client ----
-    qdrant = QdrantClient(url=settings.qdrant_url)
+    qdrant = QdrantClient(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key or None,
+    )
 
     # ---- Create or recreate collection ----
     existing = {c.name for c in qdrant.get_collections().collections}
