@@ -98,9 +98,7 @@ async def update_user_profile(
             logger.warning("profile_invalid_preferences", user_id=user_id)
             return None
 
-        result = await session.execute(
-            select(UserProfile).where(UserProfile.user_id == user_id)
-        )
+        result = await session.execute(select(UserProfile).where(UserProfile.user_id == user_id))
         profile = result.scalar_one_or_none()
         if profile is None:
             profile = UserProfile(user_id=user_id, preferences_json={})

@@ -112,8 +112,7 @@ async def test_recommendation_ranks_top_three_with_agent_citations() -> None:
                 "rank": 1,
                 "score": 0.92,
                 "rationale": (
-                    "Commute agent confirmed a 15-min walk and "
-                    "Neighborhood agent rated safety 4/5."
+                    "Commute agent confirmed a 15-min walk and Neighborhood agent rated safety 4/5."
                 ),
             },
             {

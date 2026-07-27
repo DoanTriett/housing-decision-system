@@ -67,15 +67,11 @@ def _rule_flags(candidates: list[ListingCandidate]) -> dict[str, list[str]]:
     for candidate in candidates:
         pct_below = (median - candidate.price_monthly) / median * 100
         if pct_below > 25:
-            flags[candidate.id].append(
-                f"price {pct_below:.0f}% below market median"
-            )
+            flags[candidate.id].append(f"price {pct_below:.0f}% below market median")
     return flags
 
 
-def _build_user_message(
-    candidates: list[ListingCandidate], flags: dict[str, list[str]]
-) -> str:
+def _build_user_message(candidates: list[ListingCandidate], flags: dict[str, list[str]]) -> str:
     lines = ["Assess risk for each listing:", ""]
     for candidate in candidates:
         lines.append(f"listing_id: {candidate.id}")

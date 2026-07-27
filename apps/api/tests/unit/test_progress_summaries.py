@@ -29,9 +29,7 @@ def _candidate(i: int) -> ListingCandidate:
 
 
 def test_listing_search_summary_counts_candidates() -> None:
-    summary = _agent_summary(
-        "listing_search", {"candidates": [_candidate(1), _candidate(2)]}
-    )
+    summary = _agent_summary("listing_search", {"candidates": [_candidate(1), _candidate(2)]})
     assert summary == "Found 2 candidates"
 
 
@@ -44,9 +42,7 @@ def test_planner_payload_includes_selected_agents_and_reasoning() -> None:
             AgentName.budget: "check",
         },
     )
-    payload = _enrich_progress_payload(
-        "planner", {"execution_plan": plan}, "req-1"
-    )
+    payload = _enrich_progress_payload("planner", {"execution_plan": plan}, "req-1")
     assert payload["event"] == "agent_complete"
     assert payload["agent"] == "planner"
     assert payload["selected_agents"] == ["listing_search", "budget"]
@@ -73,9 +69,7 @@ def test_critic_and_recommendation_summaries() -> None:
         == "Approved — proceed to recommendation"
     )
     rec = RecommendationOutput(
-        ranked_listings=[
-            RankedListing(listing_id="a", rank=1, score=0.9, rationale="ok")
-        ],
+        ranked_listings=[RankedListing(listing_id="a", rank=1, score=0.9, rationale="ok")],
         trade_off_narrative="n",
     )
     assert _agent_summary("recommendation", {"recommendation": rec}) == "Ranked top 1"

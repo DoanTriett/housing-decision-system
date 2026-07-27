@@ -46,9 +46,7 @@ async def _get_owned_request(
     session: AsyncSession,
 ) -> UserRequest:
     """Load a UserRequest and enforce ownership (404 if missing, 403 if not owner)."""
-    result = await session.execute(
-        select(UserRequest).where(UserRequest.id == request_id)
-    )
+    result = await session.execute(select(UserRequest).where(UserRequest.id == request_id))
     row = result.scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Request not found")
@@ -124,9 +122,7 @@ async def list_requests(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> RequestListResponse:
     total_result = await session.execute(
-        select(func.count())
-        .select_from(UserRequest)
-        .where(UserRequest.user_id == user_id)
+        select(func.count()).select_from(UserRequest).where(UserRequest.user_id == user_id)
     )
     total = int(total_result.scalar_one())
 

@@ -37,9 +37,7 @@ def patch_pipeline(monkeypatch: pytest.MonkeyPatch) -> list[asyncio.Task[Any]]:
 
         scheduled.append(asyncio.create_task(_noop()))
 
-    monkeypatch.setattr(
-        "src.api.routes.requests.run_pipeline_task.delay", fake_delay
-    )
+    monkeypatch.setattr("src.api.routes.requests.run_pipeline_task.delay", fake_delay)
     return scheduled
 
 
@@ -112,16 +110,12 @@ async def test_user_b_cannot_see_or_access_user_a_request(
             async with AsyncSessionLocal() as session:
                 row = (
                     await session.execute(
-                        select(UserRequest).where(
-                            UserRequest.id == uuid.UUID(request_id)
-                        )
+                        select(UserRequest).where(UserRequest.id == uuid.UUID(request_id))
                     )
                 ).scalar_one()
                 assert row.user_id == user_a
 
-            listed = await client.get(
-                "/api/requests", headers=_auth_headers(user_b)
-            )
+            listed = await client.get("/api/requests", headers=_auth_headers(user_b))
             assert listed.status_code == 200
             body = listed.json()
             ids = {item["request_id"] for item in body["items"]}

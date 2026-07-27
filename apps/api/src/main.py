@@ -49,9 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "startup",
         environment=settings.environment,
         models_registered=list(Base.metadata.tables.keys()),
-        langsmith_enabled=bool(
-            settings.langchain_api_key or settings.langsmith_api_key
-        ),
+        langsmith_enabled=bool(settings.langchain_api_key or settings.langsmith_api_key),
     )
     yield
     logger.info("shutdown")
@@ -98,9 +96,7 @@ def custom_openapi() -> dict[str, Any]:
         routes=app.routes,
         description=app.description,
     )
-    schema.setdefault("components", {}).setdefault("securitySchemes", {})[
-        "HTTPBearer"
-    ] = {
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["HTTPBearer"] = {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
@@ -109,10 +105,7 @@ def custom_openapi() -> dict[str, Any]:
     # Mark authenticated API routes as requiring Bearer auth in Swagger UI.
     for path, methods in schema.get("paths", {}).items():
         path_str = str(path)
-        if not (
-            path_str.startswith("/api/requests")
-            or path_str.startswith("/api/admin")
-        ):
+        if not (path_str.startswith("/api/requests") or path_str.startswith("/api/admin")):
             continue
         for method_schema in methods.values():
             if isinstance(method_schema, dict):

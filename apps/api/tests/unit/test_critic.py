@@ -93,11 +93,7 @@ async def test_critic_approves_when_llm_says_satisfied() -> None:
     state = _make_state()
     with patch(
         "src.agents.critic.complete",
-        new=AsyncMock(
-            return_value=_mock_llm_response(
-                approved=True, issues=[], retry_agent=None
-            )
-        ),
+        new=AsyncMock(return_value=_mock_llm_response(approved=True, issues=[], retry_agent=None)),
     ):
         result = await run_critic(state)
 
@@ -153,11 +149,7 @@ async def test_trace_event_appended_for_critic() -> None:
     state = _make_state()
     with patch(
         "src.agents.critic.complete",
-        new=AsyncMock(
-            return_value=_mock_llm_response(
-                approved=True, issues=[], retry_agent=None
-            )
-        ),
+        new=AsyncMock(return_value=_mock_llm_response(approved=True, issues=[], retry_agent=None)),
     ):
         result = await run_critic(state)
 

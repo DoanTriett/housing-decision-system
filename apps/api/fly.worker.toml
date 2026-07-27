@@ -1,0 +1,17 @@
+# Celery worker (Linux prefork) — same image as the API, different process.
+app = 'housing-decision-worker'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  ENVIRONMENT = 'production'
+
+[processes]
+  worker = 'celery -A src.worker.celery_app:celery_app worker --loglevel=info --concurrency=2'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

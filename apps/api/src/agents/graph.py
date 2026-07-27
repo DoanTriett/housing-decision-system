@@ -164,9 +164,7 @@ def build_graph(
             "trace": _trace_delta(result),
         }
 
-    builder: StateGraph[AgentState, None, AgentState, AgentState] = StateGraph(
-        AgentState
-    )
+    builder: StateGraph[AgentState, None, AgentState, AgentState] = StateGraph(AgentState)
 
     builder.add_node("planner", planner_node)
     builder.add_node("listing_search", listing_search_node)

@@ -48,9 +48,7 @@ async def test_observability_summary_aggregates_and_flags_stale() -> None:
     stale_id = uuid.uuid4()
     started = datetime.now(tz=UTC) - timedelta(seconds=5)
     finished = started + timedelta(milliseconds=250)
-    stale_created = datetime.now(tz=UTC) - timedelta(
-        seconds=STALE_PENDING_SECONDS + 30
-    )
+    stale_created = datetime.now(tz=UTC) - timedelta(seconds=STALE_PENDING_SECONDS + 30)
 
     async with AsyncSessionLocal() as session:
         session.add(
@@ -77,9 +75,7 @@ async def test_observability_summary_aggregates_and_flags_stale() -> None:
         # Force created_at for the stale row (TimestampMixin may override on insert).
         await session.flush()
         await session.execute(
-            text(
-                "UPDATE user_requests SET created_at = :created WHERE id = :id"
-            ),
+            text("UPDATE user_requests SET created_at = :created WHERE id = :id"),
             {"created": stale_created, "id": stale_id},
         )
         session.add(

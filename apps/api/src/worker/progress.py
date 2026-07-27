@@ -36,9 +36,7 @@ def publish_progress(request_id: str, event: dict[str, Any]) -> None:
 
 async def subscribe_progress(request_id: str) -> AsyncGenerator[dict[str, Any], None]:
     """Yield progress events until a terminal ``done`` or ``error`` event arrives."""
-    client: aioredis.Redis[str] = aioredis.from_url(
-        settings.redis_url, decode_responses=True
-    )
+    client: aioredis.Redis[str] = aioredis.from_url(settings.redis_url, decode_responses=True)
     pubsub = client.pubsub()
     channel = _channel(request_id)
     try:

@@ -58,9 +58,7 @@ async def _fake_execute_pipeline(
     del user_request_dict
     req_uuid = uuid.UUID(request_id)
 
-    publish_progress(
-        request_id, {"event": "status", "status": "running", "request_id": request_id}
-    )
+    publish_progress(request_id, {"event": "status", "status": "running", "request_id": request_id})
     publish_progress(
         request_id,
         {"event": "agent_complete", "agent": "planner", "request_id": request_id},
@@ -87,9 +85,7 @@ async def _fake_execute_pipeline(
     }
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(UserRequest).where(UserRequest.id == req_uuid)
-        )
+        result = await session.execute(select(UserRequest).where(UserRequest.id == req_uuid))
         row = result.scalar_one()
         session.add(
             Recommendation(
@@ -118,13 +114,9 @@ def patch_pipeline(monkeypatch: pytest.MonkeyPatch) -> list[asyncio.Task[Any]]:
     scheduled: list[asyncio.Task[Any]] = []
 
     def fake_delay(request_id: str, user_request_dict: dict[str, Any]) -> None:
-        scheduled.append(
-            asyncio.create_task(_fake_execute_pipeline(request_id, user_request_dict))
-        )
+        scheduled.append(asyncio.create_task(_fake_execute_pipeline(request_id, user_request_dict)))
 
-    monkeypatch.setattr(
-        "src.api.routes.requests.run_pipeline_task.delay", fake_delay
-    )
+    monkeypatch.setattr("src.api.routes.requests.run_pipeline_task.delay", fake_delay)
     return scheduled
 
 
@@ -175,9 +167,7 @@ async def test_get_request_returns_completed_recommendation(
         request_id = create.json()["request_id"]
         await patch_pipeline[0]
 
-        got = await client.get(
-            f"/api/requests/{request_id}", headers=_AUTH_HEADERS
-        )
+        got = await client.get(f"/api/requests/{request_id}", headers=_AUTH_HEADERS)
         assert got.status_code == 200
         status_body = got.json()
 
@@ -196,9 +186,7 @@ async def test_get_request_unknown_id_returns_404(
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        response = await client.get(
-            f"/api/requests/{bad_id}", headers=_AUTH_HEADERS
-        )
+        response = await client.get(f"/api/requests/{bad_id}", headers=_AUTH_HEADERS)
     assert response.status_code == 404
 
 

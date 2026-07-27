@@ -54,9 +54,7 @@ async def observability_summary(
     _ = user_id
 
     recent_ids_result = await session.execute(
-        select(UserRequest.id)
-        .order_by(UserRequest.created_at.desc())
-        .limit(recent_limit)
+        select(UserRequest.id).order_by(UserRequest.created_at.desc()).limit(recent_limit)
     )
     recent_ids = list(recent_ids_result.scalars().all())
 
@@ -95,9 +93,7 @@ async def observability_summary(
             AgentCostLatencyStat(
                 agent_name=name,
                 call_count=count,
-                avg_latency_ms=(
-                    float(bucket["latency_sum"]) / count if count else 0.0
-                ),
+                avg_latency_ms=(float(bucket["latency_sum"]) / count if count else 0.0),
                 avg_cost_usd=(float(bucket["cost_sum"]) / count if count else 0.0),
                 total_cost_usd=float(bucket["cost_sum"]),
             )

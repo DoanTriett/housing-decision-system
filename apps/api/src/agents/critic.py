@@ -65,26 +65,19 @@ def _summarize_state(state: AgentState) -> str:
     ]
     if state["execution_plan"]:
         lines.append(
-            "  selected_agents="
-            + str([a.value for a in state["execution_plan"].selected_agents])
+            "  selected_agents=" + str([a.value for a in state["execution_plan"].selected_agents])
         )
     if state["budget_analysis"]:
         affordable = sum(1 for a in state["budget_analysis"].values() if a.is_affordable)
-        lines.append(
-            f"  budget: {len(state['budget_analysis'])} analyses, "
-            f"{affordable} affordable"
-        )
+        lines.append(f"  budget: {len(state['budget_analysis'])} analyses, {affordable} affordable")
     if state["neighborhood_findings"]:
         lines.append(f"  neighborhood: {len(state['neighborhood_findings'])} assessments")
         for lid, nb in list(state["neighborhood_findings"].items())[:3]:
-            lines.append(
-                f"    {lid[:8]}… safety={nb.safety_score} noise={nb.noise_score}"
-            )
+            lines.append(f"    {lid[:8]}… safety={nb.safety_score} noise={nb.noise_score}")
     if state["commute_results"]:
         meeting = sum(1 for c in state["commute_results"].values() if c.meets_constraint)
         lines.append(
-            f"  commute: {len(state['commute_results'])} results, "
-            f"{meeting} meet constraint"
+            f"  commute: {len(state['commute_results'])} results, {meeting} meet constraint"
         )
     if state["risk_flags"]:
         high = sum(1 for r in state["risk_flags"].values() if r.risk_level == "high")

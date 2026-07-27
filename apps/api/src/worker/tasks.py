@@ -111,9 +111,7 @@ def _agent_summary(node_name: str, node_update: Any) -> str:
 
     if node_name == "budget":
         analysis = node_update.get("budget_analysis") or {}
-        affordable = sum(
-            1 for item in analysis.values() if getattr(item, "is_affordable", False)
-        )
+        affordable = sum(1 for item in analysis.values() if getattr(item, "is_affordable", False))
         return f"{affordable}/{len(analysis)} within budget"
 
     if node_name == "risk":
@@ -142,14 +140,10 @@ def _agent_summary(node_name: str, node_update: Any) -> str:
     return f"{node_name.replace('_', ' ')} finished"
 
 
-def _enrich_progress_payload(
-    node_name: str, node_update: Any, request_id: str
-) -> dict[str, Any]:
+def _enrich_progress_payload(node_name: str, node_update: Any, request_id: str) -> dict[str, Any]:
     """Build an ``agent_complete`` SSE payload with summary (+ planner plan fields)."""
     # Map retry node onto the listing_search card in the live graph.
-    display_agent = (
-        "listing_search" if node_name == "listing_search_retry" else node_name
-    )
+    display_agent = "listing_search" if node_name == "listing_search_retry" else node_name
     payload: dict[str, Any] = {
         "event": "agent_complete",
         "agent": display_agent,
@@ -178,9 +172,7 @@ def _enrich_progress_payload(
 async def _set_request_status(request_id: uuid.UUID, status: str) -> None:
     await engine.dispose()
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(UserRequest).where(UserRequest.id == request_id)
-        )
+        result = await session.execute(select(UserRequest).where(UserRequest.id == request_id))
         row = result.scalar_one_or_none()
         if row is None:
             logger.warning("user_request_missing", request_id=str(request_id))
@@ -197,9 +189,7 @@ async def _persist_results(request_id: uuid.UUID, state: AgentState) -> None:
     """
     await engine.dispose()
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(UserRequest).where(UserRequest.id == request_id)
-        )
+        result = await session.execute(select(UserRequest).where(UserRequest.id == request_id))
         row = result.scalar_one_or_none()
         if row is None:
             raise RuntimeError(f"UserRequest {request_id} not found for persistence")
@@ -289,18 +279,14 @@ async def execute_pipeline(
                 config: RunnableConfig = {"configurable": {"thread_id": request_id}}
                 initial = _initial_state(request_id, housing_req)
 
-                async for update in graph.astream(
-                    initial, config=config, stream_mode="updates"
-                ):
+                async for update in graph.astream(initial, config=config, stream_mode="updates"):
                     if not isinstance(update, dict):
                         continue
                     for node_name, node_update in update.items():
                         # Skip internal bookkeeping nodes from the SSE feed.
                         if node_name in ("prepare_retry",):
                             continue
-                        payload = _enrich_progress_payload(
-                            node_name, node_update, request_id
-                        )
+                        payload = _enrich_progress_payload(node_name, node_update, request_id)
                         publish_progress(request_id, payload)
 
                 # Load final checkpointed state for persistence.

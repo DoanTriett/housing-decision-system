@@ -67,9 +67,7 @@ _TOOL_CHOICE: dict[str, Any] = {
 }
 
 
-def compute_hard_constraint_violations(
-    state: AgentState, candidate: ListingCandidate
-) -> list[str]:
+def compute_hard_constraint_violations(state: AgentState, candidate: ListingCandidate) -> list[str]:
     """Code-level hard-constraint checks — not LLM judgment."""
     req = state["user_request"]
     lid = candidate.id
@@ -171,16 +169,12 @@ def _build_user_message(state: AgentState) -> str:
     ]
     if state["critic_notes"] is not None:
         notes = state["critic_notes"]
-        parts.append(
-            f"Critic: approved={notes.approved} issues={notes.issues}"
-        )
+        parts.append(f"Critic: approved={notes.approved} issues={notes.issues}")
         parts.append("")
 
     candidates = state["candidates"]
     n = min(3, len(candidates))
-    parts.append(
-        f"Rank up to {n} of the following {len(candidates)} candidate(s):"
-    )
+    parts.append(f"Rank up to {n} of the following {len(candidates)} candidate(s):")
     parts.append("")
     for candidate in candidates:
         parts.append(_candidate_summary(state, candidate))
@@ -189,10 +183,7 @@ def _build_user_message(state: AgentState) -> str:
 
 
 def _violations_by_listing_id(state: AgentState) -> dict[str, list[str]]:
-    return {
-        c.id: compute_hard_constraint_violations(state, c)
-        for c in state["candidates"]
-    }
+    return {c.id: compute_hard_constraint_violations(state, c) for c in state["candidates"]}
 
 
 def _clamp_score_for_violations(
@@ -220,15 +211,9 @@ def _fallback_recommendation(state: AgentState) -> RecommendationOutput:
         RankedListing(
             listing_id=c.id,
             rank=i,
-            score=_clamp_score_for_violations(
-                c.id, max(0.0, 1.0 - (i - 1) * 0.15), violations_map
-            ),
+            score=_clamp_score_for_violations(c.id, max(0.0, 1.0 - (i - 1) * 0.15), violations_map),
             rationale=(
-                (
-                    f"Note: this {violations_map[c.id][0]}. "
-                    if violations_map.get(c.id)
-                    else ""
-                )
+                (f"Note: this {violations_map[c.id][0]}. " if violations_map.get(c.id) else "")
                 + (
                     f"Listing Search agent returned this candidate at "
                     f"${c.price_monthly:.0f}/mo in {c.neighborhood}."
@@ -293,9 +278,7 @@ async def run_recommendation(state: AgentState) -> AgentState:
     tool_call = response.tool_calls[0]
     fn_name = getattr(getattr(tool_call, "function", None), "name", None)
     if fn_name != "submit_recommendation":
-        raise RecommendationError(
-            f"Recommendation agent called unexpected tool: {fn_name!r}"
-        )
+        raise RecommendationError(f"Recommendation agent called unexpected tool: {fn_name!r}")
 
     raw_args = getattr(tool_call.function, "arguments", "{}")
     violations_map = _violations_by_listing_id(state)
@@ -322,16 +305,13 @@ async def run_recommendation(state: AgentState) -> AgentState:
                     "rationale": str(item.get("rationale") or ""),
                 }
             )
-        narrative = str(
-            args.get("trade_off_narrative") or args.get("tradeoff_narrative") or ""
-        )
+        narrative = str(args.get("trade_off_narrative") or args.get("tradeoff_narrative") or "")
         if not coerced:
             raise ValueError(f"No ranked_listings parsed from: {raw_args[:300]}")
         recommendation = RecommendationOutput.model_validate(
             {
                 "ranked_listings": coerced,
-                "trade_off_narrative": narrative
-                or "No trade-off narrative provided.",
+                "trade_off_narrative": narrative or "No trade-off narrative provided.",
             }
         )
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
@@ -360,9 +340,7 @@ async def run_recommendation(state: AgentState) -> AgentState:
             if raw_id in valid_ids:
                 return raw_id
             matches = [
-                lid
-                for lid in valid_ids
-                if lid.startswith(raw_id) or raw_id.startswith(lid[:8])
+                lid for lid in valid_ids if lid.startswith(raw_id) or raw_id.startswith(lid[:8])
             ]
             if len(matches) == 1:
                 return matches[0]
@@ -404,9 +382,7 @@ async def run_recommendation(state: AgentState) -> AgentState:
                 RankedListing(
                     listing_id=only_id,
                     rank=1,
-                    score=_clamp_score_for_violations(
-                        only_id, float(top.score), violations_map
-                    ),
+                    score=_clamp_score_for_violations(only_id, float(top.score), violations_map),
                     rationale=top.rationale
                     or (
                         f"Listing Search agent returned this candidate at "

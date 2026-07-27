@@ -98,10 +98,7 @@ def _print_recommendation(label: str, state: AgentState) -> None:
         print("  (none)")
     else:
         for item in rec.ranked_listings:
-            print(
-                f"  #{item.rank}  score={item.score:.2f}  "
-                f"listing={item.listing_id[:8]}..."
-            )
+            print(f"  #{item.rank}  score={item.score:.2f}  listing={item.listing_id[:8]}...")
             print(f"       rationale: {item.rationale}")
         print(f"\nTrade-off narrative:\n  {rec.trade_off_narrative}")
 
@@ -144,9 +141,7 @@ async def main() -> None:
         max_commute_minutes=20,
         requires_laundry=False,
         requires_pet_friendly=False,
-        free_text=(
-            "actually open to a bigger budget, drop the pet and laundry requirements"
-        ),
+        free_text=("actually open to a bigger budget, drop the pet and laundry requirements"),
     )
 
     redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)

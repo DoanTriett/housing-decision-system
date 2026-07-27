@@ -35,10 +35,7 @@ class CreateHousingRequestBody(BaseModel):
         lowered = cleaned.lower()
         for pattern in _INJECTION_PATTERNS:
             if pattern in lowered:
-                raise ValueError(
-                    "free_text contains disallowed content "
-                    f"(matched: {pattern!r})"
-                )
+                raise ValueError(f"free_text contains disallowed content (matched: {pattern!r})")
         return cleaned or None
 
     @field_validator("anchor_address")

@@ -179,9 +179,7 @@ def main() -> None:
                 )
                 await session.flush()
                 await session.execute(
-                    text(
-                        "UPDATE user_requests SET created_at = :created WHERE id = :id"
-                    ),
+                    text("UPDATE user_requests SET created_at = :created WHERE id = :id"),
                     {"created": created, "id": stale_id},
                 )
                 await session.commit()
@@ -206,9 +204,7 @@ def main() -> None:
         print("STALE_IN_OBS", str(stale_id) in stale_ids, str(stale_id))
         hist2 = client.get(f"{API}/api/requests?limit=10&offset=0", headers=auth)
         hist_items = hist2.json().get("items", [])
-        stale_item = next(
-            (i for i in hist_items if i["request_id"] == str(stale_id)), None
-        )
+        stale_item = next((i for i in hist_items if i["request_id"] == str(stale_id)), None)
         print("STALE_IN_HISTORY", json.dumps(stale_item, indent=2, default=str))
 
 

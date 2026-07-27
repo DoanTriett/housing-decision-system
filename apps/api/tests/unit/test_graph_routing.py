@@ -148,9 +148,7 @@ async def _passthrough_commute(state: AgentState, *_args: Any) -> AgentState:
 
 
 async def _passthrough_risk(state: AgentState) -> AgentState:
-    return AgentState(
-        **{**state, "risk_flags": {}, "trace": [*state["trace"], _trace("risk")]}
-    )
+    return AgentState(**{**state, "risk_flags": {}, "trace": [*state["trace"], _trace("risk")]})
 
 
 async def _passthrough_recommendation(state: AgentState) -> AgentState:

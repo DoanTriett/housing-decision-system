@@ -99,10 +99,7 @@ def _print_run(label: str, state: AgentState) -> None:
     else:
         print(f"\nCritic approved={notes.approved}")
         print(f"Critic issues={notes.issues}")
-        print(
-            f"Critic retry_agent="
-            f"{notes.retry_agent.value if notes.retry_agent else None}"
-        )
+        print(f"Critic retry_agent={notes.retry_agent.value if notes.retry_agent else None}")
         critic_passes = trace_names.count("critic")
         if critic_passes > 1:
             print(f"Critic passes   : {critic_passes} (retry was triggered)")
