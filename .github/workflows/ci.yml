@@ -81,6 +81,7 @@ jobs:
           --cov=src
           --cov-report=term-missing
           --cov-fail-under=55
+          -m "not integration"
 
   # Day 13 eval gate — small fixed subset only (not the full 40-example dataset).
   # Requires repository secret OPENAI_API_KEY (Settings → Secrets → Actions).

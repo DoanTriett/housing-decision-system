@@ -7,6 +7,8 @@ Uses the real database and redis connections — no mocks.
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_health_all_services_up(client: AsyncClient) -> None:
