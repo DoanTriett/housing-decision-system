@@ -3,8 +3,6 @@
 > A decision-intelligence system where a planner agent dynamically routes a housing request to only the specialist agents it needs, runs independent specialists in parallel, asks a critic agent to review the combined output, and produces ranked recommendations with explicit trade-off reasoning. This is not a chatbot wrapper; it is a stateful multi-agent graph with memory, tool use, evaluation, and observability.
 
 **Live demo:** https://web-ph6nspsiw-doantriet2005-8192s-projects.vercel.app
-**API docs:** https://housing-decision-system-production.up.railway.app/docs
-**Demo video:** to be recorded with [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 **Repo:** https://github.com/DoanTriett/housing-decision-system
 
 ## Problem
