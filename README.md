@@ -198,10 +198,6 @@ The intended production shape is:
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the deployment notes. Production secrets are set through Railway/Vercel and are not committed.
 
-## Demo Video
-
-Record a 2-3 minute screen demo against the live URL. The most important clip is two contrasting requests that show visibly different agent execution graphs. Use [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
-
 ## Future Improvements
 
 - Add admin RBAC for observability.
