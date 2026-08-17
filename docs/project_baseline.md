@@ -172,28 +172,49 @@ Last updated: after Day 3
 - Coverage: 68.13% (`pytest-cov`, `fail_under=55`)
 - Full suite: 60 tests passing, ruff clean, mypy clean
 
-### Day 13 — Evaluation Harness + Testing + CI Hardening
-- Day 12 carry-over resolved as a **false alarm**: `walk_minutes=24.9` against `max_commute_minutes=25` correctly does not violate the constraint (24.9 < 25). Confirmed the clamp logic is correct by re-testing with `max_commute_minutes=20`, where all commute violators correctly clamped to `score<=0.5`
-- Persistence regression test added: `test_persisted_ranked_listing_score_respects_clamp` — asserts the clamp holds in the database, not just in-memory
-- Golden dataset: 40 hand-written diverse requests in `eval/golden_dataset.jsonl`, labeled with `expected_agents` and `expects_hard_constraint_satisfied`
-- Eval runner (`eval/run_eval.py`): routing F1, constraint-satisfaction match rate, LLM-as-judge quality/faithfulness score (checked against raw agent findings, not just "does this sound good")
-- **Full eval results (40 examples):** routing F1 = 0.9922, constraint match rate = 0.8750, judge score = 3.63/5, total cost $0.15, wall clock 514s
-- CI eval gate: runs a small subset (`--ci --skip-judge`) on every PR, thresholds set at routing F1 ≥ 0.70 and constraint match ≥ 0.65 (deliberately below the real full-eval numbers to leave headroom for dataset noise)
-- **Regression proof verified**: baseline F1=0.986 → broken (commute rule disabled) F1=0.853 → restored F1=0.986. Used the commute rule instead of pet-friendly (pet-friendly is a listing filter, not a routing decision, so it doesn't affect the routing-accuracy metric)
-- Bug found and fixed via the eval harness itself: Neighborhood agent's LLM occasionally returned `safety_score`/`noise_score = 0`, outside the valid 1–5 range, crashing the eval — added a clamp in `neighborhood.py`
-- Coverage: 68.13% (`pytest-cov`, `fail_under=55`)
-- Full suite: 60 tests passing, ruff clean, mypy clean
+### Day 14 — Deployment, Full Observability, README, Demo Polish
+
+**Local work completed by Cursor:**
+- Full portfolio README written: problem statement, architecture diagrams (mermaid), tech stack table, design decisions with trade-offs, eval results (with honest limitations), setup instructions, testing section, deployment guide, roadmap/future improvements
+- `docs/DEPLOYMENT.md` and `docs/DEMO_SCRIPT.md` created as production checklists
+- LangSmith tracing fixed to be truly opt-in via `LANGCHAIN_TRACING_V2=true` (not triggered by key presence alone)
+- `.env.example` and frontend env examples updated for all production variables
+- Dockerfile encoding artifact cleaned; `docker build` confirmed working
+- All local checks passing: `ruff check`, `mypy` (63 source files), `pytest` (60 tests), `npm run build` (8 routes)
+
+**Production deployment completed manually:**
+- Railway API service: FastAPI on Linux, `$PORT`-bound, `/health` returns `database=ok, redis=ok`
+- Railway Celery worker: separate service, `--pool=prefork --concurrency=2` — resolves the Day 8 open question; production runs real concurrent tasks, not Windows `--pool=solo`
+- Upstash Redis: TLS config correctly split between `redis-py` (cache) and Celery-compatible TLS URLs (broker/backend)
+- Neon Postgres: Alembic migrations applied, 200 listings seeded
+- Qdrant Cloud: 15 neighborhood vectors seeded, smoke query confirmed Hyde Park top result
+- Vercel frontend: deployed, CORS on backend set to allow Vercel domain
+- Clerk: production keys set on both Railway and Vercel
+- LangSmith: `LANGSMITH_*` env vars configured in Railway, tracing enabled in production
+- `v1.0` tag created and pushed, commit `8020a2a`
 ---
 
 ## Not Yet Built
 
 | Day | What |
 |-----|------|
-| Day 14 | Production deployment + LangSmith tracing + polished README + demo video |
+
 
 ---
 
 ## Known Issues & Notes to Resolve Later
+### Day 14
+ Demo video not yet recorded — requires manual browser sign-in to the live Vercel URL to capture a real authenticated session.
+- LangSmith trace screenshot not yet captured — needs a real production request run to appear in the LangSmith dashboard.
+- Admin RBAC (any authenticated user can view `/admin/observability`) remains future work.
+- Automatic stale-pending recovery (Celery task time limits, periodic sweep job) remains future work — staleness is detectable in the UI but not auto-resolved.
+- Full authenticated production journey (request IDs, real recommendation output) needs to be verified manually via the browser after demo recording.
+
+**Open issues carried all the way from earlier days (still unresolved at v1.0):**
+- Neighborhood agent occasionally returns `safety_score`/`noise_score = 0` (outside 1–5 range) — patched with a clamp in Day 13 but root cause is LLM non-compliance with the tool schema; tighter schema constraints or output validation would be more robust.
+- Constraint match rate is 87.5% on the golden eval set — 5 of 40 examples don't match expected behavior; likely a mix of dataset-labeling edge cases and genuine system limitations, not investigated further.
+- Judge quality score averages 3.63/5 — reported honestly in the README.
+
 ### Day 13
 - Constraint match rate is 87.5%, not 100% — 5 of 40 golden examples don't match expected pass/fail behavior. Worth a quick manual review of which ones before writing the Day 14 README, to understand whether these are dataset labeling issues or genuine system limitations, and report the number honestly either way.
 - Judge score (3.63/5) is decent but not high — don't overstate this in the README. Pair it with the strong routing F1 rather than letting one number imply the other.
