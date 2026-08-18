@@ -12,6 +12,10 @@ export default function RequestPage() {
           progress starts immediately, and ranked results are saved to history.
         </p>
       </div>
+      <p className="mb-6 max-w-xl rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        📍 Currently, listing data is available for the Austin, Texas area
+        only. More cities coming soon!
+      </p>
       <RequestForm />
     </div>
   );
